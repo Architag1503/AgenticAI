@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 from langsmith import traceable
 
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_mistralai import ChatMistralAI, MistralAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
@@ -32,7 +32,7 @@ def split_documents(docs, chunk_size=1000, chunk_overlap=150):
 
 @traceable(name="build_vectorstore")
 def build_vectorstore(splits):
-    emb = OpenAIEmbeddings(model="text-embedding-3-small")
+    emb = MistralAIEmbeddings(model="text-embedding-3-small")
     return FAISS.from_documents(splits, emb)
 
 # ----------------- parent setup function (traced) -----------------
@@ -45,7 +45,7 @@ def setup_pipeline(pdf_path: str, chunk_size=1000, chunk_overlap=150):
     return vs
 
 # ----------------- model, prompt, and run -----------------
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+llm = ChatMistralAI(model="mistral-small-2506", temperature=0)
 
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Answer ONLY from the provided context. If not found, say you don't know."),

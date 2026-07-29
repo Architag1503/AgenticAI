@@ -7,12 +7,12 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from langsmith import traceable
-from langchain_openai import ChatOpenAI
+from langchain_mistralai import ChatMistralAI
 from langgraph.graph import StateGraph, START, END
 
 # ---------- Setup ----------
 load_dotenv()
-model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+model = ChatMistralAI(model="mistral-small-2506", temperature=0)
 
 # ---------- Structured schema & model ----------
 class EvaluationSchema(BaseModel):
