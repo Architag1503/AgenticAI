@@ -120,7 +120,7 @@ if __name__ == "__main__":
             "tags": ["essay", "langgraph", "evaluation"],
             "metadata": {
                 "essay_length": len(essay2),
-                "model": "gpt-4o-mini",
+                "model": "mistral-small-2506",
                 "dimensions": ["language", "analysis", "clarity"],
             },
         },
