@@ -1,52 +1,63 @@
 from langchain_mistralai import ChatMistralAI
 from langchain_core.tools import tool
-import requests
+from langchain.agents import create_agent
 from langchain_community.tools import DuckDuckGoSearchRun
-from langchain.agents import create_react_agent, AgentExecutor
-from langchain import hub
 from dotenv import load_dotenv
+
+import os
+import requests
 
 load_dotenv()
 
+# Load API Key
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+
+# Search Tool
 search_tool = DuckDuckGoSearchRun()
 
+
+# Weather Tool
 @tool
-def get_weather_data(city: str) -> str:
-  """
-  This function fetches the current weather data for a given city
-  """
-  url = f'https://api.weatherstack.com/current?access_key=f07d9636974c4120025fadf60678771b&query={city}'
+def get_weather_data(city: str) -> dict:
+    """
+    Fetch the current weather data for a given city using OpenWeatherMap API.
+    """
 
-  response = requests.get(url)
+    url = (
+        f"https://api.openweathermap.org/data/2.5/weather"
+        f"?q={city}"
+        f"&appid={OPENWEATHER_API_KEY}"
+        f"&units=metric"
+    )
 
-  return response.json()
+    response = requests.get(url)
+    return response.json()
 
+
+# LLM
 llm = ChatMistralAI(model="mistral-small-2506")
 
-# Step 2: Pull the ReAct prompt from LangChain Hub
-prompt = hub.pull("hwchase17/react")  # pulls the standard ReAct agent prompt
-
-# Step 3: Create the ReAct agent manually with the pulled prompt
-agent = create_react_agent(
-    llm=llm,
+# Create Agent
+agent = create_agent(
+    model=llm,
     tools=[search_tool, get_weather_data],
-    prompt=prompt
+    system_prompt=(
+        "You are a helpful AI assistant. "
+        "Use the available tools whenever necessary to answer the user's questions."
+    ),
 )
 
-# Step 4: Wrap it with AgentExecutor
-agent_executor = AgentExecutor(
-    agent=agent,
-    tools=[search_tool, get_weather_data],
-    verbose=True,
-    max_iterations=5
+# Invoke
+response = agent.invoke(
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "Identify the bith place of kalpana chawla and give its current temperature",
+            }
+        ]
+    }
 )
 
-# What is the release date of Dhadak 2?
-# What is the current temp of gurgaon
-# Identify the birthplace city of Kalpana Chawla (search) and give its current temperature.
-
-# Step 5: Invoke
-response = agent_executor.invoke({"input": "What is the current temp of gurgaon"})
 print(response)
-
-print(response['output'])
+print(response["messages"][-1].content)
