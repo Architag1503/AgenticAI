@@ -32,7 +32,7 @@ def split_documents(docs, chunk_size=1000, chunk_overlap=150):
 
 @traceable(name="build_vectorstore")
 def build_vectorstore(splits):
-    emb = MistralAIEmbeddings(model="text-embedding-3-small")
+    emb = MistralAIEmbeddings(model="mistral-embed")
     return FAISS.from_documents(splits, emb)
 
 # ----------------- parent setup function (traced) -----------------
@@ -71,7 +71,7 @@ def setup_pipeline_and_query(pdf_path: str, question: str):
     chain = parallel | prompt | llm | StrOutputParser()
 
     # This LangChain run stays under the same root (since we're inside this traced function)
-    lc_config = {"run_name": "pdf_rag_query"}
+    lc_config = {"run_name": "pdf_rag_query_2"}
     return chain.invoke(question, config=lc_config)
 
 # ----------------- CLI -----------------
