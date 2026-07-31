@@ -3,13 +3,20 @@ import os
 from fastmcp import FastMCP
 
 # Define the server
+# WHY: We are creating a separate MCP server specifically for Expense Tracking. 
+# Separating concerns (Arithmetic vs Expense Tracking) allows for modular design and easier maintenance.
 mcp = FastMCP("expense_tracker")
 
 # Database file path (in the same directory as this script)
+# WHY: Using __file__ ensures the DB is always created inside the MCP folder regardless of where the script is executed from.
 DB_PATH = os.path.join(os.path.dirname(__file__), "ExpenseTracker.db")
 
 def init_db():
-    """Initialize the database and create the expenses table if it doesn't exist."""
+    """
+    Initialize the database and create the expenses table if it doesn't exist.
+    WHY: We need persistent storage for expenses. SQLite is lightweight and doesn't require 
+    running a separate database server, making it perfect for this local agent workflow.
+    """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -24,9 +31,11 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Initialize the database on startup
+# Initialize the database on startup so it's guaranteed to exist before any tools run.
 init_db()
 
+# WHY @mcp.tool(): This exposes the function to the LLM. The LLM reads the description 
+# and the arguments to figure out when to add an expense and what data to extract from the user's prompt.
 @mcp.tool()
 async def add_expense(date: str, category: str, description: str, amount: float) -> str:
     """
@@ -46,6 +55,9 @@ async def add_expense(date: str, category: str, description: str, amount: float)
     ''', (date, category, description, amount))
     conn.commit()
     conn.close()
+    
+    # WHY return a string: The LLM needs confirmation that the tool executed successfully. 
+    # This string is passed back into the LLM's context window.
     return f"Successfully added expense: {category} - ${amount} on {date}"
 
 @mcp.tool()
@@ -71,11 +83,13 @@ async def list_expenses(start_date: str, end_date: str) -> str:
     if not rows:
         return f"No expenses found between {start_date} and {end_date}."
     
+    # WHY formatting: We format the raw DB rows into a clean readable string. 
+    # The LLM will read this string and use it to formulate a natural language response for the user.
     result = [f"Expenses from {start_date} to {end_date}:"]
     for row in rows:
         result.append(f"ID: {row[0]} | Date: {row[1]} | Category: {row[2]} | Desc: {row[3]} | Amount: ${row[4]:.2f}")
     
-    return "\\n".join(result)
+    return "\n".join(result)
 
 @mcp.tool()
 async def summarizer(start_date: str, end_date: str) -> str:
@@ -88,6 +102,8 @@ async def summarizer(start_date: str, end_date: str) -> str:
     """
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # WHY SQL GROUP BY: It's much more efficient to let the database calculate the totals 
+    # rather than pulling all rows into Python and doing the math in code.
     cursor.execute('''
         SELECT category, SUM(amount) as total_amount
         FROM expenses
@@ -105,7 +121,7 @@ async def summarizer(start_date: str, end_date: str) -> str:
     for row in rows:
         result.append(f"{row[0]}: ${row[1]:.2f}")
     
-    return "\\n".join(result)
+    return "\n".join(result)
 
 def main():
     # Starts the MCP server over STDIO
